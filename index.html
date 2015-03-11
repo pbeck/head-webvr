@@ -1,9 +1,10 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>WebVR + Skin [Lee Perry-Smith]</title>
+		<title>WebVR + [Lee Perry-Smith]</title>
 		<meta charset="utf-8">
-		<style type="text/css">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
 			body {
 				background:#000;
 				color:#aaa;
@@ -31,39 +32,49 @@
 				color:#fff;
 			}
 
+			#stats { position: absolute; top:0; left: 0 }
+			#stats #fps { background: transparent !important }
+			#stats #fps #fpsText { color: #aaa !important }
+			#stats #fps #fpsGraph { display: none }
 		</style>
 	</head>
 
 	<body>
 
 		<div id="info">
-			<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - webgl skin rendering demo.
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl skin rendering demo.
 			<a href="http://www.ir-ltd.net/infinite-3d-head-scan-released/" target="_blank">Lee Perry-Smith</a> head.<br />
-			WebVR adaptation by <a href="http://beckmancreative.se">Pelle Beckman</a>.
+			WebVR Adaptation <a href="http://twitter.com/pbeck">Pelle Beckman</a> @ <a href="http://beckmancreative.se">B&middot;C</a>.
 		</div>
 
-		<script type="text/javascript" src="js/ThreeSkin.js"></script>
+		<script src="three.min.js"></script>
 
-		<script type="text/javascript" src="js/ShaderExtras.js"></script>
-		<script type="text/javascript" src="js/ShaderSkin.js"></script>
+		<script src="js/ShaderSkin.js"></script>
 
-		<script type="text/javascript" src="js/postprocessing/EffectComposer.js"></script>
-		<script type="text/javascript" src="js/postprocessing/RenderPass.js"></script>
-		<script type="text/javascript" src="js/postprocessing/BloomPass.js"></script>
-		<script type="text/javascript" src="js/postprocessing/TexturePass.js"></script>
-		<script type="text/javascript" src="js/postprocessing/ShaderPass.js"></script>
-		<script type="text/javascript" src="js/postprocessing/MaskPass.js"></script>
+		<script src="js/shaders/BleachBypassShader.js"></script>
+		<script src="js/shaders/ConvolutionShader.js"></script>
+		<script src="js/shaders/CopyShader.js"></script>
+
+		<script src="js/postprocessing/EffectComposer.js"></script>
+		<script src="js/postprocessing/RenderPass.js"></script>
+		<script src="js/postprocessing/BloomPass.js"></script>
+		<script src="js/postprocessing/TexturePass.js"></script>
+		<script src="js/postprocessing/ShaderPass.js"></script>
+		<script src="js/postprocessing/MaskPass.js"></script>
 
 
-		<script type="text/javascript" src="js/Detector.js"></script>
-		<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
-		<script type="text/javascript" src="js/Stats.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
 
-		<script type="text/javascript">
+		<script src="js/effects/VREffect.js"></script>
+		<script src="js/controls/VRControls.js"></script>
+		<script src="js/controls/FirstPersonControls.js"></script>
+
+		<script>
 
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-			var statsEnabled = false;
+			var statsEnabled = true;
 
 			var container, stats, loader;
 
@@ -81,6 +92,21 @@
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
 
+			var firstPass = true;
+
+			var vrEffect, vrControls, vrFlag = false;
+			var fpControls;
+			var axisHelper;
+
+
+			window.addEventListener("keypress", function(e) {
+				if (e.charCode == 'f'.charCodeAt(0)) {
+					vrFlag = !vrFlag;
+					vrEffect.setFullScreen();
+					vrEffect.startFullscreen();
+				}
+			}, false);
+
 			init();
 			animate();
 
@@ -89,7 +115,7 @@
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
-				camera = new THREE.Camera( 35, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 10000 );
 				camera.position.z = 900;
 
 				scene = new THREE.Scene();
@@ -99,10 +125,8 @@
 				ambientLight = new THREE.AmbientLight( 0x222222 );
 				scene.add( ambientLight );
 
-
 				directionalLight = new THREE.DirectionalLight( 0xffeedd, 1 );
-				directionalLight.position.set( 1, -1, 1 );
-				directionalLight.position.normalize();
+				directionalLight.position.set( 1, -1, 1 ).normalize();
 				scene.add( directionalLight );
 
 				// MATERIALS
@@ -115,44 +139,45 @@
 
 				var uniformsUV = THREE.UniformsUtils.clone( shader.uniforms );
 
-				uniformsUV[ "tNormal" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Infinite-Level_02_Tangent_SmoothUV.jpg" );
-				uniformsUV[ "uNormalScale" ].value = -0.75;
+				uniformsUV[ "tNormal" ].value = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Infinite-Level_02_Tangent_SmoothUV.jpg" );
+				uniformsUV[ "uNormalScale" ].value = 0.75;
 
-				uniformsUV[ "tDiffuse" ].texture = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-COL.jpg" );
+				uniformsUV[ "tDiffuse" ].value = THREE.ImageUtils.loadTexture( "obj/leeperrysmith/Map-COL.jpg" );
 
 				uniformsUV[ "passID" ].value = 0;
 
-				uniformsUV[ "uDiffuseColor" ].value.setHex( diffuse );
-				uniformsUV[ "uSpecularColor" ].value.setHex( specular );
-				uniformsUV[ "uAmbientColor" ].value.setHex( ambient );
+				uniformsUV[ "diffuse" ].value.setHex( diffuse );
+				uniformsUV[ "specular" ].value.setHex( specular );
+				uniformsUV[ "ambient" ].value.setHex( ambient );
 
 				uniformsUV[ "uRoughness" ].value = 0.185;
 				uniformsUV[ "uSpecularBrightness" ].value = 0.8;
 
 				var uniforms = THREE.UniformsUtils.clone( uniformsUV );
-				uniforms[ "tDiffuse" ].texture = uniformsUV[ "tDiffuse" ].texture;
-				uniforms[ "tNormal" ].texture = uniformsUV[ "tNormal" ].texture;
+				uniforms[ "tDiffuse" ].value = uniformsUV[ "tDiffuse" ].value;
+				uniforms[ "tNormal" ].value = uniformsUV[ "tNormal" ].value;
 				uniforms[ "passID" ].value = 1;
 
 				var parameters = { fragmentShader: shader.fragmentShader, vertexShader: shader.vertexShader, uniforms: uniforms, lights: true };
 				var parametersUV = { fragmentShader: shader.fragmentShader, vertexShader: shader.vertexShaderUV, uniforms: uniformsUV, lights: true };
 
 
-				material = new THREE.MeshShaderMaterial( parameters );
-				var materialUV = new THREE.MeshShaderMaterial( parametersUV );
+				material = new THREE.ShaderMaterial( parameters );
+				var materialUV = new THREE.ShaderMaterial( parametersUV );
 
 				// LOADER
 
 				loader = new THREE.JSONLoader( true );
 				document.body.appendChild( loader.statusDomElement );
 
-				loader.load( { model: "obj/leeperrysmith/LeePerrySmithV2.js", callback: function( geometry ) { createScene( geometry, 100, material ) } } );
+				loader.load(  "obj/leeperrysmith/LeePerrySmith.js", function( geometry ) { createScene( geometry, 100, material ) } );
 
 				// RENDERER
 
-				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setClearColor( 0x050505 );
+				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.setClearColorHex( 0x050505, 1 );
 				renderer.autoClear = false;
 
 				container.appendChild( renderer.domElement );
@@ -162,9 +187,6 @@
 				if ( statsEnabled ) {
 
 					stats = new Stats();
-					stats.domElement.style.position = 'absolute';
-					stats.domElement.style.top = '0px';
-					stats.domElement.style.zIndex = 100;
 					container.appendChild( stats.domElement );
 
 				}
@@ -175,12 +197,10 @@
 
 				// POSTPROCESSING
 
-				var renderModelUV = new THREE.RenderPass( scene, camera, materialUV, new THREE.Color( 0xca9c8d ) );
+				var renderModelUV = new THREE.RenderPass( scene, camera, materialUV, new THREE.Color( 0x575757 ) );
 				var renderModel = new THREE.RenderPass( scene, camera );
 
-				THREE.ColorUtils.adjustHSV( renderModelUV.clearColor, 0, -0.5, -0.45 );
-
-				var effectScreen = new THREE.ShaderPass( THREE.ShaderExtras[ "screen" ] );
+				var effectCopy = new THREE.ShaderPass( THREE.CopyShader );
 
 				var effectBloom1 = new THREE.BloomPass( 1, 15, 2, 512 );
 				var effectBloom2 = new THREE.BloomPass( 1, 25, 4, 512 );
@@ -190,11 +210,11 @@
 				effectBloom2.clear = true;
 				effectBloom3.clear = true;
 
-				effectScreen.renderToScreen = true;
+				effectCopy.renderToScreen = true;
 
 				//
 
-				var pars = { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBufer: false };
+				var pars = { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: false };
 				var rtwidth = 512;
 				var rtheight = 512;
 
@@ -234,7 +254,7 @@
 
 				var effectBloom = new THREE.BloomPass( 0.25 );
 
-				var effectBleach = new THREE.ShaderPass( THREE.ShaderExtras[ "bleachbypass" ] );
+				var effectBleach = new THREE.ShaderPass( THREE.BleachBypassShader );
 				effectBleach.uniforms.opacity.value = 0.25;
 
 				effectBleach.renderToScreen = true;
@@ -247,13 +267,47 @@
 
 				//
 
-				uniforms[ "tBlur1" ].texture = composerScene.renderTarget2;
-				uniforms[ "tBlur2" ].texture = composerUV1.renderTarget2;
-				uniforms[ "tBlur3" ].texture = composerUV2.renderTarget2;
-				uniforms[ "tBlur4" ].texture = composerUV3.renderTarget2;
+				uniforms[ "tBlur1" ].value = composerScene.renderTarget2;
+				uniforms[ "tBlur2" ].value = composerUV1.renderTarget2;
+				uniforms[ "tBlur3" ].value = composerUV2.renderTarget2;
+				uniforms[ "tBlur4" ].value = composerUV3.renderTarget2;
 
-				uniforms[ "tBeckmann" ].texture = composerBeckmann.renderTarget1;
+				uniforms[ "tBeckmann" ].value = composerBeckmann.renderTarget1;
 
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+
+				vrEffect = new THREE.VREffect(renderer, VREffectLoaded);
+				vrControls = new THREE.VRControls(camera);
+
+				function VREffectLoaded(error) {
+				    if (error) { 
+				        console.log("error with init VR : " + error);
+				    }
+				}
+
+				/*
+				fpControls = new THREE.FirstPersonControls(camera);
+				//fpControls.movementSpeed = 1000;
+				fpControls.lookSpeed = 10;
+				*/
+				//axisHelper = new THREE.AxisHelper(0.060);
+				//axisHelper.position.set(0,-0.03,-0.30);
+				//scene.add(axisHelper);
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}
 
@@ -262,9 +316,9 @@
 				geometry.computeTangents();
 
 				mesh = new THREE.Mesh( geometry, material );
-				mesh.position.y = - 50;
+				mesh.position.y = -150;
+				mesh.position.z = -650;
 				mesh.scale.set( scale, scale, scale );
-				mesh.doubleSided = true;
 
 				scene.add( mesh );
 
@@ -272,17 +326,16 @@
 
 			}
 
-			function onDocumentMouseMove(event) {
+			function onDocumentMouseMove( event ) {
 
-				//mouseX = ( event.clientX - windowHalfX );
-				//mouseY = ( event.clientY - windowHalfY );
+				mouseX = ( event.clientX - windowHalfX );
+				mouseY = ( event.clientY - windowHalfY );
 
 			}
 
 			//
 
 			function animate() {
-
 				requestAnimationFrame( animate );
 
 				render();
@@ -292,6 +345,7 @@
 
 			function render() {
 
+				/*
 				targetX = mouseX * .001;
 				targetY = mouseY * .001;
 
@@ -301,11 +355,18 @@
 					mesh.rotation.x += 0.05 * ( targetY - mesh.rotation.x );
 
 				}
+				*/
 
+				
+				
 				renderer.clear();
 
-				composerBeckmann.render();
+				if ( firstPass ) {
 
+					composerBeckmann.render();
+					firstPass = false;
+
+				}
 
 				composerScene.render();
 
@@ -313,10 +374,37 @@
 				composerUV2.render();
 				composerUV3.render();
 
-				//composerFinal.render( 0.1 );
-				renderer.render( scene, camera );
+				composerFinal.render( 0.1 );
+				
+				//fpControls.update();
+
+				if(vrFlag) {
+					vrControls.update();
+					vrEffect.render(scene, camera);
+
+
+				} else {	
+					
+					renderer.render( scene, camera );
+				}
 
 			}
+
+			var receivingPositionalData = false;
+			  var receivingOrientationData = false;
+			  var timerID = setInterval(function(){
+			    if (camera.position.x !== 0 && !receivingPositionalData){
+			      receivingPositionalData = true;
+			      console.log("receiving positional data");
+			    }
+			    if (camera.quaternion.x !== 0 && !receivingOrientationData){
+			      receivingOrientationData = true;
+			      console.log("receiving orientation data");
+			    }
+			    if (receivingOrientationData && receivingPositionalData){
+			      clearInterval(timerID);
+			    }
+			  }, 2000);
 
 
 		</script>
