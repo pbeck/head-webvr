@@ -39,7 +39,8 @@
 		<div id="info">
 			<a href="http://threejs.org" target="_blank">three.js</a> - webgl skin rendering demo.
 			<a href="http://www.ir-ltd.net/infinite-3d-head-scan-released/" target="_blank">Lee Perry-Smith</a> head.<br />
-			WebVR Adaptation <a href="http://twitter.com/pbeck">Pelle Beckman</a> @ <a href="http://beckmancreative.se">B&middot;C</a>.
+			WebVR Adaptation <a href="http://twitter.com/pbeck">Pelle Beckman</a> @ <a href="http://beckmancreative.se">B&middot;C</a>.<br /><br />
+			Press 'F' for fullscreen and proper VR.
 		</div>
 
 		<script src="three.min.js"></script>
@@ -126,7 +127,7 @@
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 10, window.innerWidth / window.innerHeight, 0.1, 10000 );
-				camera.position.z = 900;
+				camera.position.z = 2;
 
 				scene = new THREE.Scene();
 
