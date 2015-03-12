@@ -9,6 +9,8 @@ WebVR Adaptation by Pelle Beckman
 You will need a webbrowser with webvr support.
 For VR mode to work it has to be used with the Oculus enabled builds of [Firefox](http://mozvr.com/downloads.html) or [Chrome/Chromium](https://drive.google.com/a/google.com/folderview?id=0BzudLt22BqGRbW9WTHMtOWMzNjQ&usp=sharing#list)
 
+![image](./screenshot.png)
+
 
 Pelle Beckman, 2015
 

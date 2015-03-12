@@ -27,11 +27,6 @@
 				z-index:1000;
 			}
 
-			#oldie {
-				background:rgb(200,100,0) !important;
-				color:#fff;
-			}
-
 			#stats { position: absolute; top:0; left: 0 }
 			#stats #fps { background: transparent !important }
 			#stats #fps #fpsText { color: #aaa !important }
@@ -96,7 +91,7 @@
 
 			var vrEffect, vrControls, vrFlag = false;
 			var fpControls;
-			var axisHelper;
+			var bgSphere, bgSphereVisible = false;
 
 
 			window.addEventListener("keypress", function(e) {
@@ -104,6 +99,13 @@
 					vrFlag = !vrFlag;
 					vrEffect.setFullScreen();
 					vrEffect.startFullscreen();
+				}
+				else if(e.charCode == 'z'.charCodeAt(0)) {
+					vrControls.zeroSensor();
+				}
+				else if(e.charCode == 'b'.charCodeAt(0)) {
+					bgSphere.visible = bgSphereVisible;
+					bgSphereVisible = !bgSphereVisible;
 				}
 			}, false);
 
@@ -115,7 +117,7 @@
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
-				camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera = new THREE.PerspectiveCamera( 10, window.innerWidth / window.innerHeight, 0.1, 10000 );
 				camera.position.z = 900;
 
 				scene = new THREE.Scene();
@@ -170,7 +172,7 @@
 				loader = new THREE.JSONLoader( true );
 				document.body.appendChild( loader.statusDomElement );
 
-				loader.load(  "obj/leeperrysmith/LeePerrySmith.js", function( geometry ) { createScene( geometry, 100, material ) } );
+				loader.load(  "obj/leeperrysmith/LeePerrySmith.js", function( geometry ) { createScene( geometry, 0.086, material ) } );
 
 				// RENDERER
 
@@ -288,15 +290,12 @@
 				    }
 				}
 
-				/*
-				fpControls = new THREE.FirstPersonControls(camera);
-				//fpControls.movementSpeed = 1000;
-				fpControls.lookSpeed = 10;
-				*/
-				//axisHelper = new THREE.AxisHelper(0.060);
-				//axisHelper.position.set(0,-0.03,-0.30);
-				//scene.add(axisHelper);
+				var sphereGeom =  new THREE.SphereGeometry( 50, 32, 16 );
+				var wireframeMaterial = new THREE.MeshBasicMaterial( { color: 0xeaeaea, wireframe: true, transparent: true } ); 
 
+				bgSphere = new THREE.Mesh( sphereGeom.clone(), wireframeMaterial );
+				bgSphere.position.set(1, 2, 0);
+				scene.add(bgSphere);
 			}
 
 			function onWindowResize() {
@@ -316,8 +315,8 @@
 				geometry.computeTangents();
 
 				mesh = new THREE.Mesh( geometry, material );
-				mesh.position.y = -150;
-				mesh.position.z = -650;
+				mesh.position.y = -0.1;
+				mesh.position.z = -0.5;
 				mesh.scale.set( scale, scale, scale );
 
 				scene.add( mesh );
@@ -359,7 +358,7 @@
 
 				
 				
-				renderer.clear();
+				//renderer.clear();
 
 				if ( firstPass ) {
 
